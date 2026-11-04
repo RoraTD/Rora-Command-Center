@@ -230,7 +230,15 @@ function sharedFromSheet(payload){
  for(const r of sheetRows(payload,'CC Club Schedule'))add(r.Venue+' — Club Night',r.Venue==='Aussie Outback Pub'?'Aussie Outback Pub':r.Venue==='Amby'?'Amby':r.Venue,sheetDayDate(r.Day),sheetTime(r.Start),sheetTime(r.End),sheetRepeat(r.Repeat)||'weekly',r.Notes||'');
  for(const r of sheetRows(payload,'CC Work Rotation'))add('Work Shift','Real Life',sheetDate(r['First Date']),sheetTime(r.Start),sheetTime(r.End),sheetRepeat(r.Repeat)||'biweekly',r.Rotation||'',{realLifeType:'Work / Shift'});
  for(const r of sheetRows(payload,'CC Time Off')){const start=sheetDate(r['Start Date']),end=sheetDate(r['End Date'])||start;if(!start)continue;let d=parse(start);for(let i=0;i<366&&iso(d)<=end;i++,d.setDate(d.getDate()+1))add((r.Type||'Time Off')+' — Off Work','Real Life',iso(d),'','','',r.Notes||'',{realLifeType:'Vacation / Time Off'});}
- for(const r of sheetRows(payload,'CC Special Dates')){const md=String(r['Month-Day']||'').trim();if(!/^\\d{2}-\\d{2}$/.test(md))continue;add((r['Person / Details']||'')+' '+(r.Occasion||'Special Date'),r.Category||'Birthdays & Anniversaries','2026-'+md,'','',sheetRepeat(r.Repeat)||'yearly','');}
+ for(const r of sheetRows(payload,'CC Special Dates')){
+  const raw=String(r['Month-Day']||'').trim();
+  let month='',day='';
+  let match=raw.match(/^(\d{1,2})[-\/](\d{1,2})$/);
+  if(match){month=pad(match[1]);day=pad(match[2]);}
+  else{match=raw.match(/^(?:\d{4}-)?(\d{1,2})-(\d{1,2})$/);if(match){month=pad(match[1]);day=pad(match[2]);}}
+  if(!month||!day||+month<1||+month>12||+day<1||+day>31)continue;
+  add([r['Person / Details'],r.Occasion||'Special Date'].filter(Boolean).join(' '),r.Category||'Birthdays & Anniversaries','2026-'+month+'-'+day,'','',sheetRepeat(r.Repeat)||'yearly','');
+ }
  for(const r of sheetRows(payload,'CC Holidays'))add(r.Holiday,'Holidays',sheetDate(r.Date),'','',sheetRepeat(r.Repeat),r.Notes||'');
  for(const r of sheetRows(payload,'CC Tasks')){const title=r.Task;if(!title)continue;result.tasks.push({id:r['Task ID']||'sheet-task-'+result.tasks.length,title,category:r.Category||'Real Life',date:sheetDate(r['Due Date']),notes:r.Notes||'',done:/^(done|completed)$/i.test(r.Status||'')})}
  for(const r of sheetRows(payload,'CC Projects')){const title=r.Project;if(!title)continue;result.projects.push({id:r['Project ID']||'sheet-project-'+result.projects.length,title,category:r.Category||'Good Girl Graphics',date:sheetDate(r['Target Date'])||sheetDate(r['Start Date']),notes:r.Notes||'',status:r.Status||'Not started'})}
