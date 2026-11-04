@@ -61,25 +61,33 @@ const clubSchedule=[
  {title:'Aussie Outback Pub',category:'Aussie Outback Pub',day:1,time:'21:00',end:'00:00'},
  {title:'Amby — Hosting / Games',category:'Amby',day:2,time:'18:00',end:'20:00'}
 ];
-function sameClubEvent(e,c){
- if(e.category!==c.category||e.time!==c.time||e.end!==c.end)return false;
- const d=parse(e.date);
- return d.getDay()===c.day && (e.repeat==='weekly'||e.repeat==='daily'||(!e.repeat&&e.date>=today()));
+function clubMatch(e,c){
+ if(e.category!==c.category)return false;
+ if(parse(e.date).getDay()!==c.day)return false;
+ // Only normalize recognizable club sessions; do not change unrelated events.
+ const known=clubSchedule.some(s=>s.category===e.category&&s.day===c.day&&s.time===e.time&&s.end===e.end);
+ const oldWednesday=c.category==='Alter Ego'&&c.day===3&&e.time==='23:00'&&e.end==='01:00';
+ return known||oldWednesday;
 }
 $('installClubSchedule').onclick=()=>{
- let added=0,skipped=0;
+ let added=0,corrected=0,unchanged=0;
  for(const c of clubSchedule){
-  if(c.category==='Alter Ego'&&c.day===3){
-   const prior=state.events.find(e=>e.category==='Alter Ego'&&e.time==='23:00'&&e.end==='01:00'&&e.repeat==='weekly'&&parse(e.date).getDay()===3);
-   if(prior){prior.time='22:00';prior.notes='Eastern Time · Wednesday starts at 10 PM; ends at 1 AM Thursday.';skipped++;continue;}
+  const matches=state.events.filter(e=>clubMatch(e,c));
+  if(matches.length){
+   for(const e of matches){
+    if(e.time!==c.time||e.end!==c.end||e.repeat!=='weekly'||e.repeatUntil){
+     e.time=c.time;e.end=c.end;e.repeat='weekly';e.repeatUntil='';
+     corrected++;
+    }else unchanged++;
+   }
+   continue;
   }
-  if(state.events.some(e=>sameClubEvent(e,c))){skipped++;continue;}
   const d=parse(today());d.setDate(d.getDate()+(c.day-d.getDay()+7)%7);
   state.events.push({id:uid(),title:c.title,category:c.category,date:iso(d),time:c.time,end:c.end,repeat:'weekly',repeatUntil:'',notes:'Eastern Time · Recurs weekly. End time after midnight is on the following day.'});
   added++;
  }
  save();render();
- $('clubScheduleStatus').textContent=added+' recurring club nights added; '+skipped+' matching entries skipped or corrected.';
+ $('clubScheduleStatus').textContent=added+' added · '+corrected+' corrected to weekly · '+unchanged+' already weekly. Existing unrelated events were preserved.';
 };
 function render(){const start=weekStart(),end=new Date(start);end.setDate(start.getDate()+6);$('weekLabel').textContent=`${fmt(iso(start))} – ${fmt(iso(end))}`;$('week').innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const date=iso(d),events=state.events.filter(x=>eventOnDate(x,date)).sort((a,b)=>(a.time||'').localeCompare(b.time||''));return `<div class="day ${date===today()?'today':''}"><div class="daytitle">${d.toLocaleDateString(undefined,{weekday:'short'})} ${d.getDate()}</div>${events.map(e=>`<button class="event" style="--cat:${cats[e.category]||'#999'}" data-type="event" data-id="${esc(e.id)}"><b>${esc(e.title)}</b><span>${esc(e.time||'All day')}${e.end?'–'+esc(e.end):''}</span></button>`).join('')||'<span class="muted" style="font-size:11px">Open</span>'}</div>`}).join('');$('legend').innerHTML=Object.entries(cats).map(([k,v])=>`<span><i class="dot" style="background:${v}"></i>${esc(k)}</span>`).join('');$('filters').innerHTML=['All','Open','Done'].map(x=>`<button class="tiny filter ${filter===x?'active':''}" data-filter="${x}">${x}</button>`).join('');let tasks=state.tasks.filter(t=>filter==='All'||(filter==='Done'?t.done:!t.done)).sort((a,b)=>Number(a.done)-Number(b.done)||(a.date||'9999').localeCompare(b.date||'9999'));$('tasks').innerHTML=tasks.map(t=>`<div class="task ${t.done?'done':''}"><input type="checkbox" data-check="${esc(t.id)}" ${t.done?'checked':''} aria-label="Complete ${esc(t.title)}"><div class="detail"><b>${esc(t.title)}</b><small><span style="color:${cats[t.category]||'#ccc'}">${esc(t.category)}</span> · ${t.date?fmt(t.date):'No date'}</small></div><button class="tiny" data-type="task" data-id="${esc(t.id)}">Edit</button></div>`).join('')||'<div class="empty">No tasks here. Add one to get started.</div>';$('projects').innerHTML=state.projects.map(p=>`<div class="project"><strong>${esc(p.title)}</strong><small style="color:${cats[p.category]||'#aaa'}">${esc(p.category)}</small><p>${esc(p.status)}${p.date?' · Due '+fmt(p.date):''}</p><p>${esc(p.notes||'')}</p><button class="tiny" data-type="project" data-id="${esc(p.id)}">Edit project</button></div>`).join('')||'<div class="empty">No projects yet. Add a client project, fundraiser, or event plan.</div>';$('stats').innerHTML=[[state.events.filter(e=>{for(let d=parse(today());d<=end;d.setDate(d.getDate()+1)){if(eventOnDate(e,iso(d)))return true}return false}).length,'Upcoming events'],[state.tasks.filter(t=>!t.done).length,'Open tasks'],[state.projects.filter(p=>p.status!=='Completed').length,'Active projects'],[state.tasks.filter(t=>!t.done&&t.date&&t.date<today()).length,'Overdue tasks']].map(([n,l])=>`<div class="stat"><strong>${n}</strong><small>${l}</small></div>`).join('')};function open(type,id=null,preset={}){mode=type;editing=id;const item=id?state[type+'s'].find(x=>x.id===id):preset;$('dialogTitle').textContent=(id?'Edit ':'Add ')+({event:'event',task:'task',project:'project'}[type]);$('title').value=item.title||'';$('category').value=item.category||'Real Life';$('date').value=item.date||today();$('time').value=item.time||'';$('end').value=item.end||'';$('status').value=item.status||'Not started';$('notes').value=item.notes||'';$('timeLabel').hidden=type!=='event';$('endLabel').hidden=type!=='event';$('statusLabel').hidden=type!=='project';$('delete').hidden=!id;$('dialog').showModal();$('title').focus()};$('category').innerHTML=Object.keys(cats).map(c=>`<option>${esc(c)}</option>`).join('');$('addEvent').onclick=()=>open('event');$('addTask').onclick=$('quickTask').onclick=()=>open('task');$('addProject').onclick=()=>open('project');$('addPersonal').onclick=()=>open('event',null,{category:'Personal Time'});$('prev').onclick=()=>{offset--;render()};$('next').onclick=()=>{offset++;render()};$('thisWeek').onclick=()=>{offset=0;render()};$('close').onclick=$('cancel').onclick=()=>$('dialog').close();$('form').onsubmit=e=>{e.preventDefault();const previous=editing?state[mode+'s'].find(x=>x.id===editing):null;const data={...(previous||{}),id:editing||uid(),title:$('title').value.trim(),category:$('category').value,date:$('date').value,notes:$('notes').value.trim()};if(!data.title)return;if(mode==='event'){data.time=$('time').value;data.end=$('end').value}else if(mode==='task'){data.done=editing?!!state.tasks.find(x=>x.id===editing)?.done:false}else data.status=$('status').value;const arr=state[mode+'s'],i=arr.findIndex(x=>x.id===editing);if(i>=0)arr[i]=data;else arr.push(data);save();$('dialog').close();render()};$('delete').onclick=()=>{if(!editing||!confirm('Delete this item?'))return;state[mode+'s']=state[mode+'s'].filter(x=>x.id!==editing);save();$('dialog').close();render()};document.addEventListener('click',e=>{const b=e.target.closest('[data-type],[data-filter]');if(!b)return;if(b.dataset.filter){filter=b.dataset.filter;render()}else open(b.dataset.type,b.dataset.id)});document.addEventListener('change',e=>{if(!e.target.dataset.check)return;const t=state.tasks.find(t=>t.id===e.target.dataset.check);if(t){t.done=e.target.checked;save();render()}});$('export').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),...state},null,2)],{type:'application/json'}),a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download='command-center-backup-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),500)};$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!['events','tasks','projects'].every(k=>Array.isArray(data[k])))throw Error('Invalid backup');if(!confirm('Replace all current planner data with this backup?'))return;state={events:data.events, tasks:data.tasks,projects:data.projects};save();render()}catch(err){alert('Could not import: '+err.message)}finally{e.target.value=''}};
 // Master weekly scheduler (additive; preserves existing storage key and records)
