@@ -103,7 +103,7 @@ const masterTemplates=[
 ['Alter Ego — Late Night Uncensored','Alter Ego'],['Aussie Outback Pub','Aussie Outback Pub'],
 ['LLMC — Meeting / Event','Living Legends MC'],['GGG — Client Design Session','Good Girl Graphics'],
 ['BTS Fundraiser — Planning','BTS Fundraiser'],['Amby — Hosting / Games','Amby'],
-['Real Life — Appointment','Real Life'],['Personal Time — Unavailable','Personal Time']];
+['Real Life — Work / Shift','Real Life','Work / Shift'],['Real Life — Doctor / Dentist Appointment','Real Life','Doctor / Dentist Appointment'],['Real Life — Personal Appointment','Real Life','Personal Appointment'],['Real Life — Time With Kids','Real Life','Time With Kids'],['Real Life — Family Event','Real Life','Family Event'],['Real Life — Vacation / Time Off','Real Life','Vacation / Time Off'],['Real Life — School / Kids\' Activities','Real Life','School / Kids\' Activities'],['Real Life — Errands','Real Life','Errands'],['Real Life — Bills / Important Deadlines','Real Life','Bills / Important Deadlines'],['Real Life — Other Real Life','Real Life','Other Real Life'],['Personal Time — Unavailable','Personal Time']];
 const masterDays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function masterRow(){
  const wrap=document.createElement('div');wrap.className='master-row';
@@ -127,11 +127,11 @@ $('masterSave').onclick=()=>{
   if(!title){$('masterMessage').textContent='Please enter a title for every filled row.';return;}
   const t=masterTemplates[Number(sel)],day=Number(row.querySelector('.m-day').value);
   const d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()+(day-d.getDay()+7)%7);
-  additions.push({id:uid(),title,category:t[1],date:iso(d),time:row.querySelector('.m-time').value,end:row.querySelector('.m-end').value,repeat:row.querySelector('.m-repeat').value,repeatUntil:'',notes:row.querySelector('.m-notes').value.trim()});
+  additions.push({id:uid(),title,category:t[1],...(t[2]?{realLifeType:t[2]}:{}),date:iso(d),time:row.querySelector('.m-time').value,end:row.querySelector('.m-end').value,repeat:row.querySelector('.m-repeat').value,repeatUntil:'',notes:row.querySelector('.m-notes').value.trim()});
  }
  if(!additions.length){$('masterMessage').textContent='Choose at least one commitment first.';return;}
  if(!confirm('Add '+additions.length+' recurring commitment(s) to your calendar?'))return;
- const unique=additions.filter(a=>!state.events.some(e=>e.category===a.category&&e.date===a.date&&e.time===a.time&&e.end===a.end&&e.repeat===a.repeat));state.events.push(...unique);save();render();$('masterDialog').close();alert('Added '+additions.length+' recurring commitment(s).');
+ const unique=additions.filter(a=>!state.events.some(e=>e.category===a.category&&e.date===a.date&&e.time===a.time&&e.end===a.end&&e.repeat===a.repeat&&e.title===a.title));state.events.push(...unique);save();render();$('masterDialog').close();alert('Added '+unique.length+' recurring commitment(s). '+(additions.length-unique.length)+' duplicate(s) skipped.');
 };
 render()})();
 </script></body></html>
