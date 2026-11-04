@@ -220,7 +220,7 @@ let sharedState={events:[],tasks:[],projects:[]};
 let sharedStatus='Loading shared Google Sheet…';
 function sheetRows(payload,name){return Array.isArray(payload?.sheets?.[name])?payload.sheets[name]:[]}
 function sheetDate(v){const s=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?m[3]+'-'+pad(m[1])+'-'+pad(m[2]):''}
-function sheetTime(v){const s=String(v||'').trim();if(!s)return '';const m=s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);if(!m)return s;let hr=+m[1];if(m[3])hr=hr%12+(m[3].toUpperCase()==='PM'?12:0);return pad(hr)+':'+m[2]}
+function sheetTime(v){const s=String(v||'').trim().replace(/\s+next day$/i,'');if(!s)return '';const m=s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);if(!m)return s;let hr=+m[1];if(m[3])hr=hr%12+(m[3].toUpperCase()==='PM'?12:0);return pad(hr)+':'+m[2]}
 function sheetRepeat(v){const s=String(v||'').toLowerCase().trim();return {'weekly':'weekly','biweekly':'biweekly','every two weeks':'biweekly','yearly':'yearly','monthly':'monthly','daily':'daily'}[s]||''}
 function sheetDayDate(day){const names=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];const n=names.indexOf(String(day||'').toLowerCase());if(n<0)return '';const d=new Date('2026-11-01T12:00:00');d.setDate(d.getDate()+(n-d.getDay()+7)%7);return iso(d)}
 function sharedFromSheet(payload){
@@ -241,15 +241,17 @@ function mergeShared(){
   const sharedCategories=new Set(sharedState.events.map(e=>e.category));
   const overlaps=(local,remote)=>{
    if(local.category!==remote.category)return false;
-   if(local.time!==remote.time)return false;
-   if(!eventOnDate(remote,local.date)&&!eventOnDate(local,remote.date))return false;
-   const titleA=(local.title||'').toLowerCase(),titleB=(remote.title||'').toLowerCase();
-   const sameKind=titleA.includes('work')&&titleB.includes('work')||
-     titleA.includes('club night')&&titleB.includes('club night')||
-     titleA.includes('late night')&&titleB.includes('club night')||
-     titleA.includes('club night')&&titleB.includes('late night')||
-     titleA===titleB;
-   return sameKind;
+   const la=(local.title||'').toLowerCase(),ra=(remote.title||'').toLowerCase();
+   const clubCats=['Alter Ego','The Hangar','Outskirts','Aussie Outback Pub','Amby'];
+   const regularClub=clubCats.includes(local.category)&&
+     /club night|late night uncensored|hairband|hosting|outback pub/i.test(la)&&
+     /club night/i.test(ra)&&local.repeat==='weekly'&&remote.repeat==='weekly';
+   if(regularClub&&parse(local.date).getDay()===parse(remote.date).getDay())return true;
+   const work=local.category==='Real Life'&&/work|shift/i.test(la)&&/work|shift/i.test(ra);
+   if(work&&local.time===remote.time&&
+      (eventOnDate(remote,local.date)||eventOnDate(local,remote.date)))return true;
+   return la===ra&&local.time===remote.time&&
+     (eventOnDate(remote,local.date)||eventOnDate(local,remote.date));
   };
   state={
    events:[...sharedState.events,...localState.events.filter(e=>!sharedState.events.some(s=>overlaps(e,s)))],
