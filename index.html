@@ -236,7 +236,35 @@ function sharedFromSheet(payload){
  for(const r of sheetRows(payload,'CC Projects')){const title=r.Project;if(!title)continue;result.projects.push({id:r['Project ID']||'sheet-project-'+result.projects.length,title,category:r.Category||'Good Girl Graphics',date:sheetDate(r['Target Date'])||sheetDate(r['Start Date']),notes:r.Notes||'',status:r.Status||'Not started'})}
  return result;
 }
-function mergeShared(){if(ownerMode){state={events:[...sharedState.events,...localState.events.filter(e=>!sharedState.events.some(s=>s.category===e.category&&s.time===e.time&&s.end===e.end&&s.repeat===e.repeat&&s.date===e.date||s.category===e.category&&s.time===e.time&&s.end===e.end&&s.repeat===e.repeat&&s.date===e.date&&s.title===e.title||s.category===e.category&&s.time===e.time&&s.end===e.end&&eventOnDate(s,e.date)))],tasks:[...sharedState.tasks,...localState.tasks],projects:[...sharedState.projects,...localState.projects]}}else state=sharedState;const start=weekStart(),end=new Date(start);end.setDate(end.getDate()+6);const hasWeekEvents=state.events.some(e=>{for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1))if(eventOnDate(e,iso(d)))return true;return false});if(!hasWeekEvents&&state.events.length){const first=state.events.map(e=>e.date).filter(Boolean).sort()[0];if(first&&first>iso(end)){const firstWeek=parse(first);firstWeek.setDate(firstWeek.getDate()-(firstWeek.getDay()+6)%7);offset=Math.round((firstWeek-weekStart())/(7*86400000));}}render()}
+function mergeShared(){
+ if(ownerMode){
+  const sharedCategories=new Set(sharedState.events.map(e=>e.category));
+  const overlaps=(local,remote)=>{
+   if(local.category!==remote.category)return false;
+   if(local.time!==remote.time)return false;
+   if(!eventOnDate(remote,local.date)&&!eventOnDate(local,remote.date))return false;
+   const titleA=(local.title||'').toLowerCase(),titleB=(remote.title||'').toLowerCase();
+   const sameKind=titleA.includes('work')&&titleB.includes('work')||
+     titleA.includes('club night')&&titleB.includes('club night')||
+     titleA.includes('late night')&&titleB.includes('club night')||
+     titleA.includes('club night')&&titleB.includes('late night')||
+     titleA===titleB;
+   return sameKind;
+  };
+  state={
+   events:[...sharedState.events,...localState.events.filter(e=>!sharedState.events.some(s=>overlaps(e,s)))],
+   tasks:[...sharedState.tasks,...localState.tasks],
+   projects:[...sharedState.projects,...localState.projects]
+  };
+ }else state=sharedState;
+ const start=weekStart(),end=new Date(start);end.setDate(end.getDate()+6);
+ const hasWeekEvents=state.events.some(e=>{for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1))if(eventOnDate(e,iso(d)))return true;return false});
+ if(!hasWeekEvents&&state.events.length){
+  const first=state.events.map(e=>e.date).filter(Boolean).sort()[0];
+  if(first&&first>iso(end)){const firstWeek=parse(first);firstWeek.setDate(firstWeek.getDate()-(firstWeek.getDay()+6)%7);offset=Math.round((firstWeek-weekStart())/(7*86400000))}
+ }
+ render();
+}
 function loadShared(){
  const callback='roraSheetCallback_'+Date.now();
  const script=document.createElement('script');
