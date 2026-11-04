@@ -219,8 +219,8 @@ const localState=state;
 let sharedState={events:[],tasks:[],projects:[]};
 let sharedStatus='Loading shared Google Sheet…';
 function sheetRows(payload,name){return Array.isArray(payload?.sheets?.[name])?payload.sheets[name]:[]}
-function sheetDate(v){const s=String(v||'').trim();if(/^\\d{4}-\\d{2}-\\d{2}$/.test(s))return s;const m=s.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);return m?m[3]+'-'+pad(m[1])+'-'+pad(m[2]):''}
-function sheetTime(v){const s=String(v||'').trim();if(!s)return '';const m=s.match(/^(\\d{1,2}):(\\d{2})\\s*(AM|PM)?$/i);if(!m)return s;let hr=+m[1];if(m[3])hr=hr%12+(m[3].toUpperCase()==='PM'?12:0);return pad(hr)+':'+m[2]}
+function sheetDate(v){const s=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?m[3]+'-'+pad(m[1])+'-'+pad(m[2]):''}
+function sheetTime(v){const s=String(v||'').trim();if(!s)return '';const m=s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);if(!m)return s;let hr=+m[1];if(m[3])hr=hr%12+(m[3].toUpperCase()==='PM'?12:0);return pad(hr)+':'+m[2]}
 function sheetRepeat(v){const s=String(v||'').toLowerCase().trim();return {'weekly':'weekly','biweekly':'biweekly','every two weeks':'biweekly','yearly':'yearly','monthly':'monthly','daily':'daily'}[s]||''}
 function sheetDayDate(day){const names=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];const n=names.indexOf(String(day||'').toLowerCase());if(n<0)return '';const d=new Date('2026-11-01T12:00:00');d.setDate(d.getDate()+(n-d.getDay()+7)%7);return iso(d)}
 function sharedFromSheet(payload){
