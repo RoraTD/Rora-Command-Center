@@ -343,5 +343,5 @@ $('masterSave').onclick=()=>{
  if(!confirm('Add '+additions.length+' recurring commitment(s) to your calendar?'))return;
  const unique=additions.filter(a=>!state.events.some(e=>e.category===a.category&&e.date===a.date&&e.time===a.time&&e.end===a.end&&e.repeat===a.repeat&&e.title===a.title));state.events.push(...unique);save();render();$('masterDialog').close();alert('Added '+unique.length+' recurring commitment(s). '+(additions.length-unique.length)+' duplicate(s) skipped.');
 };
-if(!ownerMode){document.querySelectorAll('.calendar-event,.calendar-task,.calendar-project').forEach(el=>el.title='View only');}render();loadShared()})();
+if(!ownerMode){document.querySelectorAll('.calendar-event,.calendar-task,.calendar-project').forEach(el=>el.title='View only');}loadShared();try{render()}catch(err){console.error('Command Center initial render error',err);const status=document.getElementById('sheetStatus');if(status)status.textContent='Loading shared Google Sheet… (calendar display issue: '+err.message+')';}})();
 </script></body></html>
