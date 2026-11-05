@@ -354,19 +354,13 @@ const planItems=[
 ];
 let planDraft=[];
 $('planDate').value=today();
-function planSetSuggestedHours(){
- const date=$('planDate').value;
- if(!date)return;
- const day=parse(date).getDay();
- // A wider default on days off; these are suggestions, not restrictions.
- const isDayOff=day>=1&&day<=3;
- $('planFrom').value=isDayOff?'09:00':'18:00';
- $('planUntil').value='23:00';
- $('planResult').textContent='Suggested planning window: '+(isDayOff?'9 AM–11 PM (Monday–Wednesday day off)':'6 PM–11 PM (adjust for your shift)')+'. Change these hours whenever you like; existing calendar events remain blocked.';
- $('planSave').style.display='none';planDraft=[];
+function planDateChanged(){
+ // Preserve the hours chosen by the user, even when switching days.
+ planDraft=[];$('planSave').style.display='none';
+ $('planResult').textContent='Choose any start and end time for this day. Existing timed calendar commitments will be excluded automatically.';
 }
-$('planDate').addEventListener('change',planSetSuggestedHours);
-planSetSuggestedHours();
+$('planDate').addEventListener('change',planDateChanged);
+planDateChanged();
 $('planChoices').innerHTML=planItems.map((p,i)=>'<label><input type="checkbox" data-plan-item="'+i+'" '+(i<5?'checked':'')+'> '+esc(p[0])+' <small>('+p[2]+'m)</small></label>').join('');
 const planMinutes=t=>{const a=(t||'').split(':').map(Number);return a.length===2&&a.every(Number.isFinite)?a[0]*60+a[1]:null};
 const planClock=m=>pad(Math.floor(m/60)%24)+':'+pad(m%60);
