@@ -382,14 +382,25 @@ $('planSuggest').onclick=()=>{
  const busy=planBusy(date,from,to);const gaps=[];let cursor=from;
  for(const b of busy){if(b[0]>cursor)gaps.push([cursor,b[0]]);cursor=Math.max(cursor,b[1])}
  if(cursor<to)gaps.push([cursor,to]);
- let remaining=chosen.slice(),free=gaps.reduce((n,g)=>n+g[1]-g[0],0);
- for(const gap of gaps){let pos=gap[0];while(remaining.length&&gap[1]-pos>=15){
-  const item=remaining.shift(),minutes=Math.min(item[2],gap[1]-pos);
-  if(minutes<15)break;
-  planDraft.push({date,title:item[0],category:item[1],time:planClock(pos),end:planClock(pos+minutes),minutes});
-  pos+=minutes;
- }}
- $('planResult').innerHTML='<p class="muted">'+free+' minutes free after existing calendar commitments.</p>'+planDraft.map(p=>'<div class="planner-result-row"><strong>'+esc(p.time)+'–'+esc(p.end)+'</strong> · '+esc(p.title)+' <small>('+p.minutes+' min)</small></div>').join('')+(remaining.length?'<p class="muted">Not enough room for: '+remaining.map(p=>esc(p[0])).join(', ')+'. Try a longer window or another day.</p>':'')+(!planDraft.length?'<p>No open blocks of at least 15 minutes in this window.</p>':'');
+ let remaining=chosen.map(p=>({item:p,left:p[2]})),free=gaps.reduce((n,g)=>n+g[1]-g[0],0);
+ // Rotate short work sessions across selected responsibilities so one large task
+ // cannot consume the whole evening. Never overlap fixed calendar commitments.
+ let turn=0;
+ for(const gap of gaps){
+  let pos=gap[0];
+  while(gap[1]-pos>=15&&remaining.some(x=>x.left>=15)){
+   let attempts=0;
+   while(attempts<remaining.length&&remaining[turn%remaining.length].left<15){turn++;attempts++}
+   if(attempts===remaining.length)break;
+   const selected=remaining[turn%remaining.length];
+   const minutes=Math.min(30,selected.left,gap[1]-pos);
+   if(minutes<15)break;
+   planDraft.push({date,title:selected.item[0],category:selected.item[1],time:planClock(pos),end:planClock(pos+minutes),minutes});
+   selected.left-=minutes;pos+=minutes;turn++;
+  }
+ }
+ const outstanding=remaining.filter(x=>x.left>0);
+ $('planResult').innerHTML='<p class="muted">'+free+' minutes available after existing calendar commitments. Suggested sessions are 15–30 minutes so you can make progress on several things.</p>'+planDraft.map(p=>'<div class="planner-result-row"><strong>'+esc(p.time)+'–'+esc(p.end)+'</strong> · '+esc(p.title)+' <small>('+p.minutes+' min)</small></div>').join('')+(outstanding.length?'<p class="muted"><strong>Still to schedule:</strong> '+outstanding.map(x=>esc(x.item[0])+' ('+x.left+'m)').join(', ')+'. These have not been added to the calendar.</p>':'')+(!planDraft.length?'<p>No open blocks of at least 15 minutes in this window. Choose a different time or day.</p>':'');
  if(planDraft.length)$('planSave').style.display='';
 };
 $('planSave').onclick=()=>{
