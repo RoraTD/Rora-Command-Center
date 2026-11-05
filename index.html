@@ -359,10 +359,10 @@ function planSetSuggestedHours(){
  if(!date)return;
  const day=parse(date).getDay();
  // A wider default on days off; these are suggestions, not restrictions.
- const isMonday=day===1;
- $('planFrom').value=isMonday?'09:00':'09:00';
+ const isDayOff=day>=1&&day<=3;
+ $('planFrom').value=isDayOff?'09:00':'18:00';
  $('planUntil').value='23:00';
- $('planResult').textContent='Suggested planning window: '+(isMonday?'9 AM–11 PM (Monday day off)':'9 AM–11 PM')+'. Change these hours whenever you like.';
+ $('planResult').textContent='Suggested planning window: '+(isDayOff?'9 AM–11 PM (Monday–Wednesday day off)':'6 PM–11 PM (adjust for your shift)')+'. Change these hours whenever you like; existing calendar events remain blocked.';
  $('planSave').style.display='none';planDraft=[];
 }
 $('planDate').addEventListener('change',planSetSuggestedHours);
